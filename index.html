@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Invisible Sun Roller</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- TailwindCSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+      /* Roll mode toggle buttons */
+      .rollmode-btn {
+        flex: 1;
+        padding: 0.25rem 0.75rem;
+        font-size: 0.75rem;
+        border-radius: 9999px;
+        border-width: 1px;
+        border-style: solid;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        text-align: center;
+        font-weight: 500;
+      }
+
+      .rollmode-btn:hover:not(.is-active) {
+        background-color: rgba(15, 23, 42, 0.8); /* slate-900/80 */
+        border-color: transparent;
+        color: rgb(226, 232, 240); /* slate-200 */
+      }
+
+      .rollmode-both.is-active {
+        background-color: rgba(16, 185, 129, 0.9); /* emerald-500/90 */
+        color: rgb(15, 23, 42); /* slate-950 */
+        border-color: rgb(167, 243, 208); /* emerald-300 */
+        box-shadow: 0 0 30px rgba(16, 185, 129, 0.5);
+      }
+
+      .rollmode-nonmag.is-active {
+        background-color: rgba(251, 191, 36, 0.9); /* amber-400/90 */
+        color: rgb(15, 23, 42);
+        border-color: rgb(254, 243, 199); /* amber-200 */
+        box-shadow: 0 0 30px rgba(251, 191, 36, 0.5);
+      }
+
+      .rollmode-btn:not(.is-active) {
+        background-color: transparent;
+        border-color: transparent;
+        color: rgb(226, 232, 240); /* slate-200 */
+      }
+
+      /* Magic card alert animation (0 roll) */
+      .magic-card {
+        position: relative;
+        overflow: hidden;
+        max-height: 1000px;
+        transition:
+          max-height 0.4s cubic-bezier(0.22, 0.61, 0.36, 1),
+          opacity 0.35s cubic-bezier(0.22, 0.61, 0.36, 1),
+          transform 0.35s cubic-bezier(0.22, 0.61, 0.36, 1),
+          box-shadow 1s ease,
+          border-color 1s ease;
+      }
+
+      .magic-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(circle at 0 0, rgba(190, 0, 0, 0.45), transparent 65%),
+          radial-gradient(circle at 100% 100%, rgba(255, 40, 40, 0.55), transparent 65%);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 1s ease;
+      }
+
+      .magic-card.magic-alert {
+        box-shadow: 0 0 45px rgba(248, 113, 113, 0.55);
+        border-color: rgba(248, 113, 113, 0.7);
+      }
+
+      .magic-card.magic-alert::before {
+        opacity: 1;
+      }
+
+      /* Smooth hide/show of magic card */
+      .magic-card.hidden-card {
+        max-height: 0;
+        margin-top: 0;
+        margin-bottom: 0;
+        opacity: 0;
+        transform: translateY(-16px);
+        pointer-events: none;
+      }
+
+      /* Non-magic card height when alone */
+      .nonmagic-card {
+        transition: min-height 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .nonmagic-card.full-height {
+        min-height: 300px;
+        flex: 1;
+      }
+    </style>
+  </head>
+
+  <body class="min-h-screen w-full flex items-stretch justify-center bg-gradient-to-r from-slate-950 via-slate-900 to-sky-900 text-slate-50">
+    <div class="w-full max-w-6xl mx-auto flex flex-col md:flex-row gap-6 md:gap-10 p-4 md:p-8">
+      <!-- LEFT SECTION: d10 launchers -->
+      <section class="flex-1 backdrop-blur-md bg-slate-900/40 border border-slate-700/60 rounded-3xl p-5 md:p-6 shadow-xl shadow-slate-900/40 flex flex-col gap-4">
+        <header class="flex flex-col gap-1">
+          <h1 class="text-2xl md:text-3xl font-semibold tracking-tight">
+            d10 Roller
+          </h1>
+          <p class="text-sm md:text-xs text-slate-300/80 max-w-md">
+            Roll a magical and a non-magical d10. Add your
+            <span class="font-semibold text-emerald-300"> Bene</span>
+            modifier to the non-magical die.
+          </p>
+        </header>
+
+        <!-- Roll mode selector -->
+        <div class="mt-1 inline-flex items-center gap-2 rounded-full bg-slate-900/70 p-1 w-full max-w-xs">
+          <button id="rollmode-both" class="rollmode-btn rollmode-both is-active">
+            Magic + Non-magic
+          </button>
+          <button id="rollmode-nonmag" class="rollmode-btn rollmode-nonmag">
+            Only Non-magic
+          </button>
+        </div>
+
+        <!-- Launchers container -->
+        <div id="d10-launchers" class="flex flex-col gap-4 mt-2 flex-1">
+          <!-- MAGIC d10 LAUNCHER -->
+          <div
+            id="magic-card"
+            class="magic-card relative overflow-hidden rounded-3xl flex flex-col md:flex-row items-stretch border border-violet-400/40 bg-gradient-to-br from-violet-900/60 via-fuchsia-800/40 to-sky-900/40 shadow-[0_0_45px_rgba(129,140,248,0.35)]"
+          >
+            <div class="absolute inset-x-10 -top-10 h-32 bg-fuchsia-500/20 blur-3xl pointer-events-none"></div>
+            <div class="relative flex-1 p-4 md:p-5 flex flex-col justify-between gap-3">
+              <div>
+                <h2 class="text-lg md:text-xl font-semibold flex items-center gap-2">
+                  <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-fuchsia-400/80 text-slate-950 text-xs font-bold">
+                    M
+                  </span>
+                  Magical d10
+                </h2>
+                <p class="mt-1 text-xs text-violet-100/80 max-w-xs">
+                  Sortilege-flavoured roll, shimmering with arcane probability.
+                </p>
+              </div>
+
+              <div class="mt-1 flex flex-col md:flex-row items-start md:items-end justify-between gap-4">
+                <div class="flex flex-col">
+                  <span class="text-[0.7rem] uppercase tracking-wide text-violet-200/80 mb-1">
+                    Result
+                  </span>
+                  <div
+                    id="magic-result"
+                    class="text-4xl md:text-5xl font-black tracking-tight text-fuchsia-200 drop-shadow-[0_0_18px_rgba(244,114,182,0.8)] min-h-[2.5rem] flex items-center"
+                  >
+                    –
+                  </div>
+                </div>
+
+                <button
+                  id="roll-d10-both"
+                  class="roll-d10-btn px-4 py-2 rounded-2xl bg-fuchsia-200 text-slate-950 text-xs md:text-sm font-semibold shadow-lg shadow-fuchsia-400/40 border border-fuchsia-300/80 hover:-translate-y-0.5 hover:shadow-fuchsia-400/70 transition-transform disabled:opacity-40 disabled:cursor-not-allowed"
+                  type="button"
+                >
+                  Roll d10 (both)
+                </button>
+              </div>
+            </div>
+
+            <!-- Decorative column -->
+            <div class="relative w-full md:w-28 bg-gradient-to-t from-slate-950/80 via-violet-900/80 to-sky-900/60 border-l border-violet-300/30 flex items-center justify-center">
+              <div class="relative flex flex-col items-center gap-1 text-[0.6rem] tracking-[0.3em] text-violet-100/70 rotate-0 md:-rotate-90">
+                <span class="uppercase">arcane</span>
+                <span class="uppercase text-fuchsia-200">flux</span>
+              </div>
+              <div class="absolute inset-0 bg-[radial-gradient(circle_at_0_0,rgba(244,114,182,0.4),transparent_60%),radial-gradient(circle_at_100%_100%,rgba(129,140,248,0.4),transparent_60%)] pointer-events-none"></div>
+            </div>
+          </div>
+
+          <!-- NON-MAGIC d10 LAUNCHER -->
+          <div
+            id="nonmagic-card"
+            class="nonmagic-card relative overflow-hidden rounded-3xl border border-amber-300/50 bg-gradient-to-br from-slate-950/70 via-slate-900/70 to-amber-900/40 shadow-[0_0_40px_rgba(251,191,36,0.25)] flex flex-col md:flex-row items-stretch"
+          >
+            <div class="absolute inset-x-4 top-0 h-24 bg-amber-400/20 blur-3xl pointer-events-none"></div>
+            <div class="relative flex-1 p-4 md:p-5 flex flex-col gap-4">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <h2 class="text-lg md:text-xl font-semibold flex items-center gap-2">
+                    <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-300/90 text-slate-950 text-xs font-bold">
+                      N
+                    </span>
+                    Non-magical d10
+                  </h2>
+                  <p class="mt-1 text-xs text-amber-100/80 max-w-xs">
+                    Reliable, grounded roll to which your
+                    <span class="font-semibold"> Bene</span> modifier is added.
+                  </p>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(0,1.7fr)] gap-4 items-end">
+                <!-- Results -->
+                <div class="flex flex-col gap-3">
+                  <div>
+                    <span class="text-[0.7rem] uppercase tracking-wide text-amber-100/80 mb-1 block">
+                      Base roll
+                    </span>
+                    <div
+                      id="nonmagic-base-result"
+                      class="text-3xl md:text-4xl font-bold text-amber-200 drop-shadow-[0_0_16px_rgba(251,191,36,0.7)] min-h-[2.2rem] flex items-center"
+                    >
+                      –
+                    </div>
+                  </div>
+
+                  <div>
+                    <span class="text-[0.7rem] uppercase tracking-wide text-emerald-100/90 mb-1 block">
+                      Total with Bene
+                    </span>
+                    <div
+                      id="nonmagic-total-result"
+                      class="text-3xl md:text-4xl font-extrabold text-emerald-200 drop-shadow-[0_0_18px_rgba(16,185,129,0.8)] min-h-[2.2rem] flex items-center"
+                    >
+                      –
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Bene modifier input -->
+                <div class="flex flex-col gap-2 rounded-2xl border border-emerald-400/40 bg-slate-950/60 p-3">
+                  <label class="text-[0.7rem] uppercase tracking-wide text-emerald-100/80">
+                    Bene modifier
+                  </label>
+                  <div class="flex items-center gap-2">
+                    <input
+                      id="bene-input"
+                      type="number"
+                      class="w-16 h-16 bg-slate-900/80 border border-emerald-500/40 rounded-xl text-center text-lg md:text-xl font-semibold outline-none focus:ring-2 focus:ring-emerald-400/80 focus:border-emerald-300/80 text-emerald-50 placeholder:text-emerald-200/40"
+                      value="0"
+                      placeholder="0"
+                    />
+                    <div class="flex flex-col gap-1">
+                      <button
+                        id="bene-plus"
+                        type="button"
+                        class="w-8 h-7 flex items-center justify-center rounded-md border border-emerald-400/70 bg-slate-900/80 text-emerald-300 text-sm font-semibold hover:bg-emerald-500/20 transition-colors"
+                      >
+                        +
+                      </button>
+                      <button
+                        id="bene-minus"
+                        type="button"
+                        class="w-8 h-7 flex items-center justify-center rounded-md border border-emerald-400/70 bg-slate-900/80 text-emerald-300 text-sm font-semibold hover:bg-emerald-500/20 transition-colors"
+                      >
+                        -
+                      </button>
+                    </div>
+                  </div>
+                  <p class="text-[0.65rem] text-emerald-100/70 mt-0.5">
+                    These units are called
+                    <span class="font-semibold"> Bene</span> and are always added
+                    to the non-magical die.
+                  </p>
+                </div>
+              </div>
+
+              <div class="flex justify-end mt-1">
+                <button
+                  id="roll-d10-now"
+                  type="button"
+                  class="roll-d10-btn px-4 py-2 rounded-2xl bg-amber-300/95 text-slate-950 text-xs md:text-sm font-semibold shadow-lg shadow-amber-300/40 border border-amber-200 hover:-translate-y-0.5 hover:shadow-amber-300/70 transition-transform"
+                >
+                  Roll d10 now
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT SECTION: d60 ethereal launcher -->
+      <section class="flex-1 backdrop-blur-xl bg-gradient-to-b from-sky-900/40 via-slate-900/50 to-indigo-950/70 border border-sky-500/40 rounded-3xl p-5 md:p-6 shadow-xl shadow-sky-900/50 flex flex-col justify-between gap-4 relative overflow-hidden">
+        <div class="absolute -top-10 -right-10 h-40 w-40 bg-sky-400/20 blur-3xl pointer-events-none"></div>
+        <div class="absolute bottom-0 left-10 h-56 w-56 bg-indigo-500/25 blur-3xl pointer-events-none"></div>
+        <div class="absolute inset-8 border border-sky-200/10 rounded-[2rem] pointer-events-none"></div>
+
+        <header class="relative z-10 flex flex-col gap-1">
+          <h2 class="text-2xl md:text-3xl font-semibold tracking-tight flex items-center gap-2">
+            d60 Sooth Deck Dreamcaster
+          </h2>
+          <p class="text-sm md:text-xs text-sky-100/85 max-w-sm">
+            A single d60 roll wrapped in a soft, dreamlike glow. Just pure fate in
+            card form.
+          </p>
+        </header>
+
+        <div class="relative z-10 flex-1 flex flex-col items-center justify-center gap-6">
+          <!-- Ethereal halo -->
+          <div class="relative h-40 w-40 md:h-48 md:w-48 flex items-center justify-center">
+            <div class="absolute inset-0 rounded-full bg-[conic-gradient(at_0%_0%,rgba(56,189,248,0.15),transparent_55%,rgba(129,140,248,0.35),transparent_85%,rgba(56,189,248,0.2))] animate-[spin_18s_linear_infinite]"></div>
+            <div class="absolute inset-4 rounded-full bg-slate-950/40 backdrop-blur-xl border border-sky-100/20"></div>
+            <div class="relative flex flex-col items-center justify-center rounded-full h-full w-full">
+              <span class="text-[0.7rem] uppercase tracking-[0.25em] text-sky-100/70 mb-1">
+                result
+              </span>
+              <div
+                id="d60-result"
+                class="text-4xl md:text-5xl font-black text-sky-50 drop-shadow-[0_0_30px_rgba(56,189,248,0.85)] min-h-[2.4rem] flex items-center"
+              >
+                –
+              </div>
+            </div>
+          </div>
+
+          <button
+            id="roll-d60-btn"
+            type="button"
+            class="px-6 py-2.5 rounded-2xl bg-sky-300/95 text-slate-950 text-sm font-semibold shadow-lg shadow-sky-400/40 border border-sky-200 hover:-translate-y-0.5 hover:shadow-sky-300/70 transition-transform"
+          >
+            Cast d60
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      // Helper: roll N-sided die (1..sides)
+      function rollDie(sides) {
+        return Math.floor(Math.random() * sides) + 1;
+      }
+
+      // Helper: roll d10 (0..9)
+      function rollD10ZeroToNine() {
+        return Math.floor(Math.random() * 10);
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        // Elements
+        const magicCard = document.getElementById("magic-card");
+        const nonMagicCard = document.getElementById("nonmagic-card");
+
+        const rollModeBothBtn = document.getElementById("rollmode-both");
+        const rollModeNonMagBtn = document.getElementById("rollmode-nonmag");
+
+        const magicResultEl = document.getElementById("magic-result");
+        const nonMagicBaseResultEl = document.getElementById("nonmagic-base-result");
+        const nonMagicTotalResultEl = document.getElementById("nonmagic-total-result");
+        const d60ResultEl = document.getElementById("d60-result");
+
+        const beneInput = document.getElementById("bene-input");
+        const benePlusBtn = document.getElementById("bene-plus");
+        const beneMinusBtn = document.getElementById("bene-minus");
+
+        const rollD10Buttons = document.querySelectorAll(".roll-d10-btn");
+        const rollD60Btn = document.getElementById("roll-d60-btn");
+
+        // State
+        let rollMode = "both"; // "both" | "nonMagical"
+        let magicAlertTimeoutId = null;
+
+        // Helpers for Bene
+        function getBeneValue() {
+          const v = parseInt(beneInput.value, 10);
+          return isNaN(v) ? 0 : v;
+        }
+
+        function setBeneValue(v) {
+          beneInput.value = String(v);
+        }
+
+        function adjustBene(delta) {
+          const current = getBeneValue();
+          const next = current + delta;
+          setBeneValue(next);
+        }
+
+        // Magic 0 animation
+        function triggerMagicZeroAnimation() {
+          if (!magicCard) return;
+
+          if (magicAlertTimeoutId !== null) {
+            clearTimeout(magicAlertTimeoutId);
+          }
+
+          magicCard.classList.add("magic-alert");
+
+          magicAlertTimeoutId = setTimeout(function () {
+            magicCard.classList.remove("magic-alert");
+            magicAlertTimeoutId = null;
+          }, 1500); // total animation duration, ease in and out included
+        }
+
+        // Update roll mode UI
+        function updateRollModeUI() {
+          if (rollMode === "both") {
+            rollModeBothBtn.classList.add("is-active");
+            rollModeNonMagBtn.classList.remove("is-active");
+
+            magicCard.classList.remove("hidden-card");
+            nonMagicCard.classList.remove("full-height");
+          } else {
+            rollModeNonMagBtn.classList.add("is-active");
+            rollModeBothBtn.classList.remove("is-active");
+
+            magicCard.classList.add("hidden-card");
+            nonMagicCard.classList.add("full-height");
+
+            // Clear magic result & alert
+            magicResultEl.textContent = "–";
+            magicCard.classList.remove("magic-alert");
+            if (magicAlertTimeoutId !== null) {
+              clearTimeout(magicAlertTimeoutId);
+              magicAlertTimeoutId = null;
+            }
+          }
+        }
+
+        // d10 roll handler
+        function handleRollD10() {
+          const modifier = getBeneValue();
+
+          const nonMagic = rollD10ZeroToNine();
+          nonMagicBaseResultEl.textContent = nonMagic;
+          nonMagicTotalResultEl.textContent = nonMagic + modifier;
+
+          if (rollMode === "both") {
+            const magic = rollD10ZeroToNine();
+            magicResultEl.textContent = magic;
+
+            if (magic === 0) {
+              triggerMagicZeroAnimation();
+            } else {
+              // If not zero, ensure alert is off
+              magicCard.classList.remove("magic-alert");
+              if (magicAlertTimeoutId !== null) {
+                clearTimeout(magicAlertTimeoutId);
+                magicAlertTimeoutId = null;
+              }
+            }
+          } else {
+            magicResultEl.textContent = "–";
+          }
+        }
+
+        // d60 roll handler
+        function handleRollD60() {
+          const value = rollDie(60);
+          d60ResultEl.textContent = value;
+        }
+
+        // Event bindings
+        rollModeBothBtn.addEventListener("click", function () {
+          rollMode = "both";
+          updateRollModeUI();
+        });
+
+        rollModeNonMagBtn.addEventListener("click", function () {
+          rollMode = "nonMagical";
+          updateRollModeUI();
+        });
+
+        benePlusBtn.addEventListener("click", function () {
+          adjustBene(1);
+        });
+
+        beneMinusBtn.addEventListener("click", function () {
+          adjustBene(-1);
+        });
+
+        rollD10Buttons.forEach(function (btn) {
+          btn.addEventListener("click", handleRollD10);
+        });
+
+        rollD60Btn.addEventListener("click", handleRollD60);
+      });
+    </script>
+  </body>
+</html>
