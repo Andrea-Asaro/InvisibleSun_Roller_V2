@@ -320,7 +320,7 @@
                   type="button"
                   class="roll-d10-btn px-4 py-2 rounded-2xl bg-amber-300/95 text-slate-950 text-xs md:text-sm font-semibold shadow-lg shadow-amber-300/40 border border-amber-200 hover:-translate-y-0.5 hover:shadow-amber-300/70 transition-transform"
                 >
-                  Roll d10 now
+                  Roll d10 (both)
                 </button>
               </div>
             </div>
@@ -404,6 +404,8 @@
         const rollD10Buttons = document.querySelectorAll(".roll-d10-btn");
         const rollD60Btn = document.getElementById("roll-d60-btn");
 
+        const rollD10NowBtn = document.getElementById("roll-d10-now");
+
         // State
         let rollMode = "both"; // "both" | "nonMagical"
         let magicAlertTimeoutId = null;
@@ -454,12 +456,20 @@
 
             magicCard.classList.remove("hidden-card");
             nonMagicCard.classList.remove("full-height");
+
+            if (rollD10NowBtn) {
+              rollD10NowBtn.textContent = "Roll d10 (both)";
+            }
           } else {
             rollModeNonMagBtn.classList.add("is-active");
             rollModeBothBtn.classList.remove("is-active");
 
             magicCard.classList.add("hidden-card");
             nonMagicCard.classList.add("full-height");
+
+            if (rollD10NowBtn) {
+              rollD10NowBtn.textContent = "Roll d10";
+            }
 
             // Clear magic result & animations
             magicResultEl.textContent = "–";
