@@ -49,6 +49,28 @@
         color: rgb(226, 232, 240); /* slate-200 */
       }
 
+      /* Small pop animation for new roll results */
+      @keyframes result-pop {
+        0% {
+          transform: scale(1);
+        }
+        40% {
+          transform: scale(1.22);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      .result-pop {
+        animation: result-pop 0.22s ease-out;
+      }
+
+      /* Keep result numbers anchored on the left during pop animation */
+      .result-anchor-left {
+        transform-origin: left center;
+      }
+
       /* Magic card alert animation (0 roll) */
       .magic-card {
         position: relative;
@@ -83,6 +105,32 @@
         opacity: 1;
       }
 
+      /* Magic shake animation (short tremor on 0) */
+      @keyframes magic-shake {
+        0% {
+          transform: translateX(0);
+        }
+        20% {
+          transform: translateX(-4px);
+        }
+        40% {
+          transform: translateX(4px);
+        }
+        60% {
+          transform: translateX(-3px);
+        }
+        80% {
+          transform: translateX(3px);
+        }
+        100% {
+          transform: translateX(0);
+        }
+      }
+
+      .magic-card.magic-shake {
+        animation: magic-shake 0.2s ease-in-out;
+      }
+
       /* Smooth hide/show of magic card */
       .magic-card.hidden-card {
         max-height: 0;
@@ -113,20 +161,15 @@
           <h1 class="text-2xl md:text-3xl font-semibold tracking-tight">
             d10 Roller
           </h1>
-          <p class="text-sm md:text-xs text-slate-300/80 max-w-md">
-            Roll a magical and a non-magical d10. Add your
-            <span class="font-semibold text-emerald-300"> Bene</span>
-            modifier to the non-magical die.
-          </p>
         </header>
 
         <!-- Roll mode selector -->
         <div class="mt-1 inline-flex items-center gap-2 rounded-full bg-slate-900/70 p-1 w-full max-w-xs">
           <button id="rollmode-both" class="rollmode-btn rollmode-both is-active">
-            Magic + Non-magic
+            Sortilege + Action
           </button>
           <button id="rollmode-nonmag" class="rollmode-btn rollmode-nonmag">
-            Only Non-magic
+            Only Action
           </button>
         </div>
 
@@ -144,7 +187,7 @@
                   <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-fuchsia-400/80 text-slate-950 text-xs font-bold">
                     M
                   </span>
-                  Magical d10
+                  Sortilege d10
                 </h2>
                 <p class="mt-1 text-xs text-violet-100/80 max-w-xs">
                   Sortilege-flavoured roll, shimmering with arcane probability.
@@ -197,11 +240,10 @@
                     <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-300/90 text-slate-950 text-xs font-bold">
                       N
                     </span>
-                    Non-magical d10
+                    Action d10
                   </h2>
                   <p class="mt-1 text-xs text-amber-100/80 max-w-xs">
-                    Reliable, grounded roll to which your
-                    <span class="font-semibold"> Bene</span> modifier is added.
+                    Reliable, grounded roll.
                   </p>
                 </div>
               </div>
@@ -215,7 +257,7 @@
                     </span>
                     <div
                       id="nonmagic-base-result"
-                      class="text-3xl md:text-4xl font-bold text-amber-200 drop-shadow-[0_0_16px_rgba(251,191,36,0.7)] min-h-[2.2rem] flex items-center"
+                      class="text-3xl md:text-4xl font-bold text-amber-200 drop-shadow-[0_0_16px_rgba(251,191,36,0.7)] min-h-[2.2rem] flex items-center result-anchor-left"
                     >
                       –
                     </div>
@@ -227,7 +269,7 @@
                     </span>
                     <div
                       id="nonmagic-total-result"
-                      class="text-3xl md:text-4xl font-extrabold text-emerald-200 drop-shadow-[0_0_18px_rgba(16,185,129,0.8)] min-h-[2.2rem] flex items-center"
+                      class="text-3xl md:text-4xl font-extrabold text-emerald-200 drop-shadow-[0_0_18px_rgba(16,185,129,0.8)] min-h-[2.2rem] flex items-center result-anchor-left"
                     >
                       –
                     </div>
@@ -297,7 +339,7 @@
             d60 Sooth Deck Dreamcaster
           </h2>
           <p class="text-sm md:text-xs text-sky-100/85 max-w-sm">
-            A single d60 roll wrapped in a soft, dreamlike glow. Just pure fate in
+            A d60 roll wrapped in a soft, dreamlike glow. Just pure fate in
             card form.
           </p>
         </header>
@@ -382,7 +424,7 @@
           setBeneValue(next);
         }
 
-        // Magic 0 animation
+        // Magic 0 animation (red halo + short shake)
         function triggerMagicZeroAnimation() {
           if (!magicCard) return;
 
@@ -390,12 +432,18 @@
             clearTimeout(magicAlertTimeoutId);
           }
 
-          magicCard.classList.add("magic-alert");
+          magicCard.classList.add("magic-alert", "magic-shake");
 
+          // Remove shake quickly (fraction of a second)
+          setTimeout(function () {
+            magicCard.classList.remove("magic-shake");
+          }, 200);
+
+          // Keep the red halo for 1s
           magicAlertTimeoutId = setTimeout(function () {
             magicCard.classList.remove("magic-alert");
             magicAlertTimeoutId = null;
-          }, 1500); // total animation duration, ease in and out included
+          }, 1000);
         }
 
         // Update roll mode UI
@@ -413,9 +461,9 @@
             magicCard.classList.add("hidden-card");
             nonMagicCard.classList.add("full-height");
 
-            // Clear magic result & alert
+            // Clear magic result & animations
             magicResultEl.textContent = "–";
-            magicCard.classList.remove("magic-alert");
+            magicCard.classList.remove("magic-alert", "magic-shake");
             if (magicAlertTimeoutId !== null) {
               clearTimeout(magicAlertTimeoutId);
               magicAlertTimeoutId = null;
@@ -429,17 +477,21 @@
 
           const nonMagic = rollD10ZeroToNine();
           nonMagicBaseResultEl.textContent = nonMagic;
-          nonMagicTotalResultEl.textContent = nonMagic + modifier;
+          triggerResultPop(nonMagicBaseResultEl);
+
+          const total = nonMagic + modifier;
+          nonMagicTotalResultEl.textContent = total;
+          triggerResultPop(nonMagicTotalResultEl);
 
           if (rollMode === "both") {
             const magic = rollD10ZeroToNine();
             magicResultEl.textContent = magic;
+            triggerResultPop(magicResultEl);
 
             if (magic === 0) {
               triggerMagicZeroAnimation();
             } else {
-              // If not zero, ensure alert is off
-              magicCard.classList.remove("magic-alert");
+              magicCard.classList.remove("magic-alert", "magic-shake");
               if (magicAlertTimeoutId !== null) {
                 clearTimeout(magicAlertTimeoutId);
                 magicAlertTimeoutId = null;
@@ -454,6 +506,16 @@
         function handleRollD60() {
           const value = rollDie(60);
           d60ResultEl.textContent = value;
+          triggerResultPop(d60ResultEl);
+        }
+
+        // Helper: small pop animation on result change
+        function triggerResultPop(el) {
+          if (!el) return;
+          el.classList.remove("result-pop");
+          // Force reflow so the animation can restart
+          void el.offsetWidth;
+          el.classList.add("result-pop");
         }
 
         // Event bindings
