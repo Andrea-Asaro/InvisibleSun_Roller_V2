@@ -322,17 +322,12 @@
     </div>
 
     <script>
-      // Helper: roll N-sided die (1..sides)
-      function rollDie(sides) {
-        return Math.floor(Math.random() * sides) + 1;
+      // Generic helper: random integer from 0 to maxExclusive - 1
+      function rollRandom(maxExclusive) {
+        return Math.floor(Math.random() * maxExclusive);
       }
 
-      // Helper: roll d10 (0..9)
-      function rollD10ZeroToNine() {
-        return Math.floor(Math.random() * 10);
-      }
-
-      document.addEventListener("DOMContentLoaded", function () {
+      document.addEventListener("DOMContentLoaded", () => {
         const magicCard = document.getElementById("magic-card");
         const nonMagicCard = document.getElementById("nonmagic-card");
 
@@ -347,107 +342,111 @@
         const rollD60Btn = document.getElementById("roll-d60-btn");
         const rollD10NowBtn = document.getElementById("roll-d10-now");
 
-        let rollMode = "both"; // "both" | "nonMagical"
-        let magicAlertTimeoutId = null;
+        const state = {
+          rollMode: "both", // "both" | "nonMagical"
+          magicAlertTimeoutId: null,
+        };
 
+        // Clear any ongoing magic alert state
+        function clearMagicAlert() {
+          if (!magicCard) return;
+          magicCard.classList.remove("magic-alert", "magic-shake");
+          if (state.magicAlertTimeoutId !== null) {
+            clearTimeout(state.magicAlertTimeoutId);
+            state.magicAlertTimeoutId = null;
+          }
+        }
+
+        // Trigger alert + shake when magic roll is 0
         function triggerMagicZeroAnimation() {
           if (!magicCard) return;
 
-          if (magicAlertTimeoutId !== null) {
-            clearTimeout(magicAlertTimeoutId);
-          }
-
+          clearMagicAlert();
           magicCard.classList.add("magic-alert", "magic-shake");
 
-          setTimeout(function () {
+          setTimeout(() => {
             magicCard.classList.remove("magic-shake");
           }, 200);
 
-          magicAlertTimeoutId = setTimeout(function () {
+          state.magicAlertTimeoutId = setTimeout(() => {
             magicCard.classList.remove("magic-alert");
-            magicAlertTimeoutId = null;
+            state.magicAlertTimeoutId = null;
           }, 1000);
         }
 
+        // Update UI when switching roll mode
         function updateRollModeUI() {
-          if (rollMode === "both") {
+          const isBoth = state.rollMode === "both";
+
+          if (isBoth) {
             rollModeBothBtn.classList.add("is-active");
             rollModeNonMagBtn.classList.remove("is-active");
-
             magicCard.classList.remove("hidden-card");
             nonMagicCard.classList.remove("full-height");
-
             if (rollD10NowBtn) {
               rollD10NowBtn.textContent = "Roll d10 (both)";
             }
           } else {
             rollModeNonMagBtn.classList.add("is-active");
             rollModeBothBtn.classList.remove("is-active");
-
             magicCard.classList.add("hidden-card");
             nonMagicCard.classList.add("full-height");
-
             if (rollD10NowBtn) {
               rollD10NowBtn.textContent = "Roll d10";
             }
-
             magicResultEl.textContent = "–";
-            magicCard.classList.remove("magic-alert", "magic-shake");
-            if (magicAlertTimeoutId !== null) {
-              clearTimeout(magicAlertTimeoutId);
-              magicAlertTimeoutId = null;
-            }
+            clearMagicAlert();
           }
         }
 
+        // Small pop animation for result elements
         function triggerResultPop(el) {
           if (!el) return;
           el.classList.remove("result-pop");
-          void el.offsetWidth; // restart animation
+          void el.offsetWidth; // restart CSS animation
           el.classList.add("result-pop");
         }
 
+        // Handle d10 rolls (non-magic + optional magic)
         function handleRollD10() {
-          const nonMagic = rollD10ZeroToNine();
+          const nonMagic = rollRandom(10); // 0..9
           nonMagicBaseResultEl.textContent = nonMagic;
           triggerResultPop(nonMagicBaseResultEl);
 
-          if (rollMode === "both") {
-            const magic = rollD10ZeroToNine();
+          if (state.rollMode === "both") {
+            const magic = rollRandom(10); // 0..9
             magicResultEl.textContent = magic;
             triggerResultPop(magicResultEl);
 
             if (magic === 0) {
               triggerMagicZeroAnimation();
             } else {
-              magicCard.classList.remove("magic-alert", "magic-shake");
-              if (magicAlertTimeoutId !== null) {
-                clearTimeout(magicAlertTimeoutId);
-                magicAlertTimeoutId = null;
-              }
+              clearMagicAlert();
             }
           } else {
             magicResultEl.textContent = "–";
           }
         }
 
+        // Handle d60 roll (1..60)
         function handleRollD60() {
-          const value = rollDie(60);
+          const value = rollRandom(60) + 1;
           d60ResultEl.textContent = value;
           triggerResultPop(d60ResultEl);
         }
 
-        rollModeBothBtn.addEventListener("click", function () {
-          rollMode = "both";
+        // Event bindings
+        rollModeBothBtn.addEventListener("click", () => {
+          state.rollMode = "both";
           updateRollModeUI();
         });
 
-        rollModeNonMagBtn.addEventListener("click", function () {
-          rollMode = "nonMagical";
+        rollModeNonMagBtn.addEventListener("click", () => {
+          state.rollMode = "nonMagical";
           updateRollModeUI();
         });
 
-        rollD10Buttons.forEach(function (btn) {
+        rollD10Buttons.forEach((btn) => {
           btn.addEventListener("click", handleRollD10);
         });
 
